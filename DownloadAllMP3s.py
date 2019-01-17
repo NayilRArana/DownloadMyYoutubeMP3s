@@ -4,14 +4,15 @@ Created on Wed Jan 16 19:22:06 2019
 
 @author: Nayil
 """
-
+from __future__ import unicode_literals
 import urllib
 import urllib.request
 import json
+import youtube_dl
 
 # get_all_videos searches YouTube for all videos from my channel, parses the resulting JSON data,
-#   and returns a tuple containing one array with the video urls and another with the video titles.
-# get_most_recent_video: None -> tupleOf(listof String, listofString)
+#   and returns an array containing the video urls
+# get_most_recent_video: None -> (listof String)
 # side effects: variable mutation
 def get_all_videos():
     
@@ -23,7 +24,6 @@ def get_all_videos():
 
     first_url = base_search_url+'key={}&channelId={}&part=snippet,id&order=date&maxResults=25'.format(api_key, channel_id)
     video_links = []
-    video_titles = []
     url = first_url
     while True:
         inp = urllib.request.urlopen(url)
@@ -32,21 +32,33 @@ def get_all_videos():
         for i in resp['items']:
             if i['id']['kind'] == "youtube#video":
                 video_links.append(base_video_url + i['id']['videoId'])
-                video_titles.append(i["snippet"]["title"])
-
         try:
             next_page_token = resp['nextPageToken']
             url = first_url + '&pageToken={}'.format(next_page_token)
         except:
             break
-    return (video_links, video_titles)
+    return video_links
+
+# download_all_videos downloads the MP3s for all YouTube vidoes from my channel.
+# download_all_videos: (listof String) -> None
+# side effects: downloads MP3s
+def download_all_videos(links):
+    ydl_opts = {
+            'format': 'bestaudio/best',
+            'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+            }],
+    }
+    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        for i in range(0, len(links)):
+            ydl.download([links[i]])
+    
 
 def main():
     results = get_all_videos()
-    for i in range(len(results[0])):
-        print(results[0][i])
-        print(results[1][i])
-        print("-------------------------")
+    download_all_videos(results)
         
 if __name__ == "__main__":
     main()
